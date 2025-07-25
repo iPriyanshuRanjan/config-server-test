@@ -1,1 +1,61 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: customer-service
+          uri: lb://customer-service
+          predicates:
+            - Path=/api/customers/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: customerServiceCB
+                fallbackUri: forward:/fallbackCustomers
+
+        - id: account-service
+          uri: lb://account-service
+          predicates:
+            - Path=/api/accounts/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: accountServiceCB
+                fallbackUri: forward:/fallbackAccounts
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      customerServiceCB:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 5
+        minimumNumberOfCalls: 5
+      accountServiceCB:
+        slidingWindowSize: 15
+        failureRateThreshold: 40
+        waitDurationInOpenState: 15000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakerevents
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
 
